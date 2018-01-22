@@ -19,7 +19,7 @@ for the full usage manual, see usage.
 Usage: 
   ./CommandStrip.py {download|search}
   ./CommandStrip.py download [-h] [-d DIRECTORY] [-g SLUG] [-i ID] [-n NUMBER]
-  ./CommandStrip.py search [-h] [q QUERY]
+  ./CommandStrip.py search [-h] [-q QUERY]
 
 optional arguments: 
   -h, --help            show this help message and exit
@@ -29,6 +29,6 @@ optional arguments:
   -i ID, --id ID        Comic ID (to download a particular comic)
   -n NUMBER, --number NUMBER
                         Number of comics to download (latest first)
-  q QUERY, --query QUERY
+  -q QUERY, --query QUERY
                         Search query
 ```
