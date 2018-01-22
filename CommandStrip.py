@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import os
-import re
 import argparse
 import urllib.parse
 import urllib.request
@@ -32,6 +31,8 @@ class ImageParser( HTMLParser ):
                     self.img_url = attr[1]
 
 def get_json_data( url ):
+    """Reads a JSON string response from a URL"""
+
     data = urllib.request.urlopen( url ).read()
     jsondata = json.loads( data.decode( "UTF-8" ) )
 
@@ -41,6 +42,11 @@ def get_json_data( url ):
     return jsondata
 
 def save_comic( url, title, directory ):
+    """Retrieves a comic from the URL and saves it with the specified title 
+    in the given directory"""
+
+    print( "Retrieving comic at " + url )
+
     img_path = title + ".jpg"
     if directory != None:
         if not os.path.exists( directory ):
@@ -57,8 +63,10 @@ def save_comic( url, title, directory ):
         # The URL can contain French characters (is an IRI). The iri_to_uri
         # function takes care of those
         urllib.request.urlretrieve( iri_to_uri( url ), img_path )
+        print( Bcolors.OKGREEN + "Retrieved comic '" + title + "'" + Bcolors.ENDC )
 
 def iri_to_uri( iri ):
+    """Converts an International Resource Identifier to a URL"""
     parts = urllib.parse.urlparse( iri )
     encoded_parts = []
     for part in list( parts ):
@@ -67,28 +75,41 @@ def iri_to_uri( iri ):
     return urllib.parse.urlunparse( encoded_parts )
 
 def download_comics( args ):
+    """Downloads comics based on the argument set"""
 
-    url = API_URL + "get_posts?"
-    
+    url = API_URL + "get_post"
+    single = False
+
     params = {}
-    if args.number != None:
-        params['count'] = str(args.number) 
     if args.slug != None:
         params['slug'] = args.slug
+        single = True
     if args.id != None:
         params['id'] = str(args.id)
+        single = True
+    if args.number != None:
+        params['count'] = str(args.number)
 
+    if not single:
+        url += 's'
+    url += '?'
     url += urllib.parse.urlencode( params )
     json = get_json_data( url )
 
     parser = ImageParser()
-    comics = json['posts']
-    for post in comics:
-        parser.feed( post['content'] )
-        print( parser.img_url )
-        save_comic( parser.img_url, post['title'], args.directory )
+    comics = ( json['post'] if single else json['posts'] )
+
+    if single:
+            parser.feed( comics['content'] )
+            save_comic( parser.img_url, comics['title'], args.directory )
+    else: 
+        for post in comics:
+            parser.feed( post['content'] )
+            save_comic( parser.img_url, post['title'], args.directory )
 
 def search_comic( args ):
+    """Searches for a particular comic based on an argument set"""
+
     url = API_URL + "get_search_results?" + urllib.parse.urlencode( { "search": args.query } )
 
     json = get_json_data( url )
@@ -100,16 +121,13 @@ def search_comic( args ):
     else:
         prompt_string += "comics:"
 
-    print( prompt_string )
+    print( Bcolors.OKGREEN + prompt_string + Bcolors.ENDC )
     print( "ID | Title | publish date" )
     for post in comics:
         print( "{} | {} | {}".format( post['id'], post['title'], post['date'] ) )
 
 def create_parser():
     parser = argparse.ArgumentParser( add_help=False )
-
-    parser.add_argument( "-d", "--directory",
-                         help="Directory in which to store comics" )
 
     sp = parser.add_subparsers()
     sp_download = sp.add_parser( "download", parents=[parser],
@@ -120,6 +138,8 @@ def create_parser():
                          help="Comic ID (to download a particular comic)" )
     sp_download.add_argument( "-n", "--number", type=int,
                          help="Number of comics to download (latest first)" )
+    parser.add_argument( "-d", "--directory",
+                         help="Directory in which to store comics" )
     sp_download.set_defaults( func=download_comics )
 
     sp_search = sp.add_parser( "search", help="Search for a comic", parents=[parser] )
@@ -131,10 +151,9 @@ def create_parser():
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    # try:
+    try:
     args.func( args )
-    # except Exception as e:
-    #     print( e )
-    #     print( Bcolors.FAIL + str(e) + Bcolors.ENDC )
+    except Exception as e:
+        print( Bcolors.FAIL + str(e) + Bcolors.ENDC )
 
 main()
